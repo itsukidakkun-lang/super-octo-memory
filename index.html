@@ -75,6 +75,19 @@
       font-size: 0.95rem;
       color: #ccc;
     }
+    .budget-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-weight: 400;
+    }
+    .budget-table th, .budget-table td {
+      border-bottom: 1px solid rgba(255,255,255,0.15);
+      padding: 8px 6px;
+      text-align: left;
+    }
+    .budget-tag { display:inline-block; margin-top:8px; padding:4px 8px; border-radius:6px; background:rgba(0,255,204,0.15); border:1px solid var(--neon); color:#fff; font-weight:600; }
+    .maker-links a { color: var(--neon); }
   </style>
 </head>
 <body>
@@ -101,7 +114,7 @@
 
     let index = 0;
     let finished = false;
-    const state = { pc:false, heavy:false, light:false, highFps:false, highRes:false, editing:false };
+    const state = { pc:false, heavy:false, light:false, highFps:false, highRes:false, editing:false, highBudget:false };
     const picks = [];
 
     function renderQuestion() {
@@ -133,7 +146,7 @@
         case 7: state.editing = (choice==='yes'); if(choice==='yes'){ picks.push('SSD: 1TB以上'); const memIdx=picks.findIndex(i=>i.startsWith('メモリ')); if(memIdx!==-1)picks[memIdx]='メモリ: 32GB'; } else { picks.push('SSD: 500GB'); } break;
         case 8: picks.push(choice==='yes'? '冷却/電源: 水冷+650W以上':'冷却/電源: 空冷+550W'); break;
         case 9: picks.push(choice==='yes'? '形状: ノートPC':'形状: デスクトップPC'); break;
-        case 10: picks.push(choice==='yes'? '予算: 20万円以上':'予算: 20万円未満'); break;
+        case 10: state.highBudget = (choice==='yes'); picks.push(choice==='yes'? '予算: 20万円以上':'予算: 20万円未満'); break;
         case 11: picks.push(choice==='yes'? 'ストレージ: 2TB以上':'ストレージ: 1TB'); break;
         case 12: picks.push(choice==='yes'? 'モニター: 240Hz以上':'モニター: 144Hz以下'); break;
       }
@@ -164,7 +177,7 @@
     function giveAdvice(gpu) {
       switch (gpu) {
         case 'GPU: GTX 1650 (雑談・歌配信なら可)':
-          return '雑談や歌配信が中心なら高性能なグラボは不要。マイクやカメラに予算を回すのがおすすめです。';
+          return '雑談や歌配信が中心なら高性能なグラボは不要。マイクやカメラに予算を回すのがおすすめです。動画編集をするなら最低でもGTX 1660 SUPERを選びましょう。';
         case 'GPU: GTX 1660 SUPER':
           return '軽量ゲーム配信向け。最新AAAタイトルは厳しいですが、配信と軽い編集なら十分です。';
         case 'GPU: RTX 3060':
@@ -180,12 +193,70 @@
       }
     }
 
+    // --- 予算見積もり ---
+    function toYen(n){ return n.toLocaleString('ja-JP'); }
+    function estimateBudget(picks, gpu){
+      const gpuPrice = {
+        'GPU: GTX 1650 (雑談・歌配信なら可)': 60000,
+        'GPU: GTX 1660 SUPER': 60000,
+        'GPU: RTX 3060': 120000,
+        'GPU: RTX 4060 Ti': 180000,
+        'GPU: RTX 4070': 230000,
+        'GPU: RTX 4080': 320000
+      };
+      let total = 0;
+      const breakdown = [];
+
+      const gpuCost = gpuPrice[gpu] || 0; total += gpuCost; breakdown.push(['GPU', gpu, gpuCost]);
+      const cpuCost = picks.includes('CPU: Core i7 / Ryzen 7') ? 60000 : 30000; total += cpuCost; breakdown.push(['CPU', picks.find(p=>p.startsWith('CPU'))||'', cpuCost]);
+      const memCost = picks.includes('メモリ: 32GB') ? 20000 : 10000; total += memCost; breakdown.push(['メモリ', picks.find(p=>p.startsWith('メモリ'))||'', memCost]);
+      const ssdCost = picks.includes('SSD: 1TB以上') ? 15000 : 8000; total += ssdCost; breakdown.push(['SSD', picks.find(p=>p.startsWith('SSD'))||'', ssdCost]);
+      const extraStore = picks.includes('ストレージ: 2TB以上') ? 15000 : 0; total += extraStore; if(extraStore) breakdown.push(['追加ストレージ', '2TB以上', extraStore]);
+      const psuCool = picks.includes('冷却/電源: 水冷+650W以上') ? 30000 : 10000; total += psuCool; breakdown.push(['冷却/電源', picks.find(p=>p.startsWith('冷却/電源'))||'', psuCool]);
+
+      // 見積り幅（相場の変動考慮）
+      const min = Math.round(total * 0.9);
+      const max = Math.round(total * 1.15);
+      return { total, min, max, breakdown };
+    }
+
+    function budgetTag(total){
+      if (total < 150000) return 'エントリー(〜15万円)';
+      if (total < 250000) return 'ミドル(15〜25万円)';
+      if (total < 350000) return 'パフォーマンス(25〜35万円)';
+      return 'ハイエンド(35万円〜)';
+    }
+
+    function makerLinks(total){
+      if (total >= 350000) return '<span class="maker-links"><a href="https://www.g-tune.jp/" target="_blank" rel="noopener">G-Tune</a> / <a href="https://www.dell.com/ja-jp/gaming/alienware" target="_blank" rel="noopener">Alienware</a> / <a href="https://rog.asus.com/jp/" target="_blank" rel="noopener">ASUS ROG</a></span>';
+      if (total >= 250000) return '<span class="maker-links"><a href="https://www.dospara.co.jp/" target="_blank" rel="noopener">ドスパラ ガレリア</a> / <a href="https://www.tsukumo.co.jp/bto/" target="_blank" rel="noopener">ツクモ</a> / <a href="https://jp.msi.com/" target="_blank" rel="noopener">MSI</a></span>';
+      if (total >= 150000) return '<span class="maker-links"><a href="https://www.pc-koubou.jp/" target="_blank" rel="noopener">パソコン工房</a> / <a href="https://www.lenovo.com/jp/ja/legion/" target="_blank" rel="noopener">Lenovo Legion</a> / <a href="https://www.asus.com/jp/tuf-gaming/" target="_blank" rel="noopener">ASUS TUF</a></span>';
+      return '<span class="maker-links"><a href="https://jp.ext.hp.com/" target="_blank" rel="noopener">HP</a> / <a href="https://www.dell.com/ja-jp/shop/dell-desktops/sr/desktops/inspiron-desktops" target="_blank" rel="noopener">Dell Inspiron</a> / <a href="https://www.acer.com/jp-ja" target="_blank" rel="noopener">Acer Nitro</a></span>';
+    }
+
     function showResult() {
       finished = true;
       const gpu = chooseGPU(state);
       let spec = `<h2>診断結果</h2><ul>`;
       picks.forEach(p=> spec += `<li>${p}</li>`);
       spec += `<li>${gpu}</li></ul>`;
+
+      // 予算見積り（内訳とレンジ）
+      const budget = estimateBudget(picks, gpu);
+      spec += `<h3>予算の目安</h3>`;
+      spec += `<table class='budget-table'><thead><tr><th>項目</th><th>選択</th><th>目安</th></tr></thead><tbody>`;
+      budget.breakdown.forEach(([k, v, c]) => {
+        spec += `<tr><td>${k}</td><td>${v}</td><td>¥${toYen(c)}</td></tr>`;
+      });
+      spec += `</tbody><tfoot><tr><th colspan="2">小計</th><th>¥${toYen(budget.total)}</th></tr></tfoot></table>`;
+      spec += `<div class='budget-tag'>おすすめ価格帯: ${budgetTag(budget.total)}</div>`;
+      spec += `<p style="margin-top:8px;">相場変動を考慮した購入目安レンジ: <strong>¥${toYen(budget.min)}〜¥${toYen(budget.max)}</strong></p>`;
+      spec += `<p>この価格帯で探すなら: ${makerLinks(budget.total)}</p>`;
+
+      // 予算チェック（Q10で20万円未満を選んでいてオーバーなら警告）
+      if (!state.highBudget && budget.total > 200000) {
+        spec += `<p style='color:#ffb0b0'>※ 現在の構成は20万円を超えがちです。<em>「価格を抑えたい/上位を狙いたい」</em>ボタンから節約構成を検討してください。</p>`;
+      }
 
       const alt = suggestAltGPU(gpu);
       if (alt) {
