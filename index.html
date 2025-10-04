@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>配信者向けPCスペック診断</title>
+  <style>
+    :root {
+      --neon: #00ffcc;
+      --pink: #ff0066;
+      --purple: #9c27b0;
+      --blue: #2196f3;
+    }
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+      color: #fff;
+    }
+    h1 {
+      text-align: center;
+      color: var(--neon);
+      text-shadow: 0 0 10px var(--neon);
+    }
+    .question-box {
+      background: rgba(0,0,0,0.7);
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 10px;
+      box-shadow: 0 0 15px rgba(0,255,204,0.5);
+    }
+    button {
+      padding: 10px 20px;
+      margin: 10px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: 0.3s;
+      display: inline-block;
+    }
+    .yes { background-color: var(--neon); color: #000; box-shadow: 0 0 10px var(--neon); }
+    .no { background-color: var(--pink); color: #fff; box-shadow: 0 0 10px var(--pink); }
+    button:hover { transform: scale(1.1); }
+    #result {
+      background: rgba(0,0,0,0.8);
+      padding: 20px;
+      border-radius: 10px;
+      margin-top: 20px;
+      font-weight: bold;
+      box-shadow: 0 0 15px rgba(255,255,255,0.3);
+    }
+    .retry-btn, .alt-btn {
+      display: inline-block;
+      margin-top: 10px;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    .retry-btn { background: var(--blue); color: #fff; box-shadow: 0 0 10px var(--blue); }
+    .alt-btn { background: var(--purple); color: #fff; box-shadow: 0 0 10px var(--purple); }
+    .alt-box { margin-top: 10px; padding: 10px; background: rgba(255,255,255,0.1); border-radius: 5px; }
+    .advice-box {
+      margin-top: 15px;
+      padding: 15px;
+      background: rgba(0,255,204,0.1);
+      border-left: 5px solid var(--neon);
+      border-radius: 5px;
+    }
+    .print-hint {
+      margin-top: 15px;
+      text-align: center;
+      font-size: 0.95rem;
+      color: #ccc;
+    }
+  </style>
+</head>
+<body>
+  <h1>配信者向けPCスペック診断</h1>
+  <div id="app"></div>
+  <div id="result"></div>
+
+  <script>
+    const questions = [
+      { q: "配信はPCゲーム中心ですか？" },
+      { q: "FPSやオープンワールドなど“重い”ゲームを配信しますか？" },
+      { q: "軽量〜中量級のPCゲームを配信しますか？" },
+      { q: "高フレームレート(120fps以上)を重視しますか？" },
+      { q: "1440pや4Kなど高解像度で配信しますか？" },
+      { q: "OBSで録画や高画質エンコードを同時に行いますか？" },
+      { q: "複数のアプリやブラウザを同時に利用しますか？" },
+      { q: "動画編集をする予定はありますか？" },
+      { q: "長時間配信(3時間以上)を行いますか？" },
+      { q: "ノートPCを希望しますか？(持ち運び重視)" },
+      { q: "予算は20万円以上ですか？" },
+      { q: "動画保存用に2TB以上の容量が必要ですか？" },
+      { q: "240Hz以上のモニターを使いますか？" }
+    ];
+
+    let index = 0;
+    let finished = false;
+    const state = { pc:false, heavy:false, light:false, highFps:false, highRes:false, editing:false };
+    const picks = [];
+
+    function renderQuestion() {
+      if (index < questions.length) {
+        const q = questions[index];
+        document.getElementById("app").innerHTML = `
+          <div class='question-box'>
+            <p>${q.q}</p>
+            <button class='yes' onclick='answer("yes")'>YES</button>
+            <button class='no' onclick='answer("no")'>NO</button>
+          </div>
+        `;
+        document.getElementById('result').innerHTML = '';
+      } else {
+        showResult();
+      }
+    }
+
+    function answer(choice) {
+      if (finished) return;
+      switch (index) {
+        case 0: state.pc = (choice==='yes'); picks.push(state.pc? '用途: PCゲーム配信':'用途: 雑談・歌配信中心'); break;
+        case 1: state.heavy = (choice==='yes'); break;
+        case 2: state.light = (choice==='yes'); break;
+        case 3: state.highFps = (choice==='yes'); break;
+        case 4: state.highRes = (choice==='yes'); break;
+        case 5: picks.push(choice==='yes'? 'CPU: Core i7 / Ryzen 7':'CPU: Core i5 / Ryzen 5'); break;
+        case 6: picks.push(choice==='yes'? 'メモリ: 32GB':'メモリ: 16GB'); break;
+        case 7: state.editing = (choice==='yes'); if(choice==='yes'){ picks.push('SSD: 1TB以上'); const memIdx=picks.findIndex(i=>i.startsWith('メモリ')); if(memIdx!==-1)picks[memIdx]='メモリ: 32GB'; } else { picks.push('SSD: 500GB'); } break;
+        case 8: picks.push(choice==='yes'? '冷却/電源: 水冷+650W以上':'冷却/電源: 空冷+550W'); break;
+        case 9: picks.push(choice==='yes'? '形状: ノートPC':'形状: デスクトップPC'); break;
+        case 10: picks.push(choice==='yes'? '予算: 20万円以上':'予算: 20万円未満'); break;
+        case 11: picks.push(choice==='yes'? 'ストレージ: 2TB以上':'ストレージ: 1TB'); break;
+        case 12: picks.push(choice==='yes'? 'モニター: 240Hz以上':'モニター: 144Hz以下'); break;
+      }
+      index++;
+      renderQuestion();
+    }
+
+    function chooseGPU(s) {
+      if (!s.pc && !s.editing) return 'GPU: GTX 1650 (雑談・歌配信なら可)';
+      if (!s.pc && s.editing) return 'GPU: GTX 1660 SUPER';
+      if (s.heavy) return (s.highRes||s.highFps)? 'GPU: RTX 4080':'GPU: RTX 4070';
+      if (s.highRes||s.highFps) return 'GPU: RTX 4060 Ti';
+      return s.light? 'GPU: RTX 3060':'GPU: GTX 1660 SUPER';
+    }
+
+    function suggestAltGPU(gpu) {
+      const map = {
+        'GPU: GTX 1650 (雑談・歌配信なら可)': '節約: 内蔵GPU / 上位: GTX 1660 SUPER',
+        'GPU: GTX 1660 SUPER': '節約: GTX 1650 / 上位: RTX 3060',
+        'GPU: RTX 3060': '節約: GTX 1660 SUPER / 上位: RTX 4060 Ti',
+        'GPU: RTX 4060 Ti': '節約: RTX 3060 / 上位: RTX 4070',
+        'GPU: RTX 4070': '節約: RTX 4060 Ti / 上位: RTX 4080',
+        'GPU: RTX 4080': '節約: RTX 4070 / 上位: RTX 4090'
+      };
+      return map[gpu] || '';
+    }
+
+    function giveAdvice(gpu) {
+      switch (gpu) {
+        case 'GPU: GTX 1650 (雑談・歌配信なら可)':
+          return '雑談や歌配信が中心なら高性能なグラボは不要。マイクやカメラに予算を回すのがおすすめです。';
+        case 'GPU: GTX 1660 SUPER':
+          return '軽量ゲーム配信向け。最新AAAタイトルは厳しいですが、配信と軽い編集なら十分です。';
+        case 'GPU: RTX 3060':
+          return '中量級ゲーム配信向け。配信と録画を同時に行うならこのクラスからがおすすめです。';
+        case 'GPU: RTX 4060 Ti':
+          return '1440pや高fps配信に対応可能。コスパが良く初心者でも扱いやすい性能です。';
+        case 'GPU: RTX 4070':
+          return '重めのゲームを配信したい人向け。安定した性能で長時間配信も可能です。';
+        case 'GPU: RTX 4080':
+          return 'ハイエンド構成。4K配信や高フレームレートを狙う人向けですが価格は高めです。';
+        default:
+          return '配信スタイルに応じて、無理のない範囲で選びましょう。';
+      }
+    }
+
+    function showResult() {
+      finished = true;
+      const gpu = chooseGPU(state);
+      let spec = `<h2>診断結果</h2><ul>`;
+      picks.forEach(p=> spec += `<li>${p}</li>`);
+      spec += `<li>${gpu}</li></ul>`;
+
+      const alt = suggestAltGPU(gpu);
+      if (alt) {
+        spec += `<button class='alt-btn' onclick='toggleAlt()'>価格を抑えたい/上位を狙いたい場合</button>`;
+        spec += `<div id='altBox' class='alt-box' style='display:none;'>${alt}</div>`;
+      }
+
+      const advice = giveAdvice(gpu);
+      spec += `<div class='advice-box'><strong>アドバイス:</strong><br>${advice}</div>`;
+
+      spec += `<p class='print-hint'>📸 スマホやPCでこの結果画面をスクリーンショットして、お店のスタッフに見せましょう。</p>`;
+
+      spec += `<button class='retry-btn' onclick='retry()'>もう一度診断する</button>`;
+
+      document.getElementById('app').innerHTML = '';
+      document.getElementById('result').innerHTML = spec;
+    }
+
+    function toggleAlt() {
+      const box = document.getElementById('altBox');
+      if (box) box.style.display = (box.style.display==='none') ? 'block' : 'none';
+    }
+
+    function retry(){
+      index=0; finished=false; picks.length=0;
+      for (let key in state) state[key] = false;
+      document.getElementById('result').innerHTML = '';
+      renderQuestion();
+    }
+
+    renderQuestion();
+  </script>
+</body>
+</html>
